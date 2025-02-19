@@ -11,7 +11,7 @@
 #define BT_INTERWORD_DELAY_DEFAULT						10000		/* Delay between words in communication */
 #define BT_SAMPLE_RATE_HZ_DEFAULT						4400
 #define BT_FRAMES_IN_BATCH_DEFAULT						5
-#define BT_BATCH_MS_DEFAULT								50
+#define BT_BATCH_MS_DEFAULT								20
 #define BT_FRAME_STRUCTURE_DEFAULT {\
 					BT_E01_SAMPLING_COMMAND, BT_PAC_SAMPLING_COMMAND, BT_E02_SAMPLING_COMMAND, BT_PAC_SAMPLING_COMMAND, \
 					BT_E03_SAMPLING_COMMAND, BT_PAC_SAMPLING_COMMAND, BT_E04_SAMPLING_COMMAND, BT_PAC_SAMPLING_COMMAND, \
@@ -233,6 +233,7 @@ BioTac 		bt_cheetah_configure_batch(Cheetah ch_handle, bt_info *biotac, int num_
 bt_data*	bt_configure_save_buffer(int num_samples);
 void 		bt_cheetah_collect_batch(Cheetah ch_handle, const bt_info *biotac, bt_data *data, BOOL print_flag);
 void        bt_cheetah_collect_1_batch(Cheetah ch_handle, const bt_info *biotac, bt_data *data, int results[4][162]);
+void        bt_cheetah_collect_1_batch_single(Cheetah ch_handle, const bt_info *biotac, bt_data *data, int results[4][54]);
 void		bt_display_errors(BioTac bt_err_code);
 void 		bt_save_buffer_data(const char *file_name, const bt_data *data, int num_samples);
 void 		bt_cheetah_close(Cheetah ch_handle);

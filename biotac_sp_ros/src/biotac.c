@@ -748,6 +748,190 @@ void bt_cheetah_collect_1_batch(Cheetah ch_handle, const bt_info *biotac, bt_dat
 
 }
 
+
+
+void bt_cheetah_collect_1_batch_single(Cheetah ch_handle, const bt_info *biotac, bt_data *data, int results[4][54])
+
+{
+
+	int i, j;
+
+ 	int byte_shift = 2 + (MAX_BIOTACS_PER_CHEETAH * 2);			// 2 bytes of command + 2 bytes per BioTac data
+
+	int spi_data_len;
+
+	int number_of_samples_in_batch;
+
+	u08 *bt_raw_data;
+
+
+
+    spi_data_len = ch_spi_batch_length(ch_handle);
+
+	bt_raw_data = malloc(spi_data_len * sizeof *bt_raw_data);
+
+	ch_spi_async_collect(ch_handle, spi_data_len, bt_raw_data);
+
+	ch_spi_async_submit(ch_handle);
+
+
+
+	number_of_samples_in_batch = spi_data_len/byte_shift;
+
+	//printf("Number of samples: %d\n",number_of_samples_in_batch);
+
+
+
+	/**** Time stamps from a computer (by default, it's disabled) ****/
+
+#ifdef MACHINE_TIMER
+
+#if defined (__linux__) || defined (__APPLE__)
+
+	gettimeofday(&tv, NULL);
+
+	curtime_sec = tv.tv_sec;
+
+	curtime_usec = tv.tv_usec;
+
+
+
+	time_of_frame_end = curtime_sec + (double)curtime_usec/1000000;
+
+	time_step = (time_of_frame_end - time_of_frame_start) / number_of_samples_in_batch;
+
+	time_of_frame_start = time_of_frame_end;
+
+#elif defined (_WIN32)
+
+	QueryPerformanceCounter(&time_of_frame_end);
+
+	time_step = ((time_of_frame_end.QuadPart - time_of_frame_start.QuadPart) / (double)frequency.QuadPart) / number_of_samples_in_batch;
+
+	time_of_frame_start = time_of_frame_end;
+
+#endif
+
+#endif /* MACHINE_TIMER */
+
+    int ct=0;
+
+	for(i = 0; i < number_of_samples_in_batch; i++)
+
+	{
+
+		if(count != 0)
+
+		{
+
+			if(i==0)
+
+			{
+
+				data[count].batch_index = data[count-1].batch_index + 1;
+
+			}
+
+			else
+
+			{
+
+				data[count].batch_index = data[count-1].batch_index;
+
+			}
+
+			if((i%(biotac->frame.frame_size)) == 0)
+
+			{
+
+				data[count].frame_index = data[count-1].frame_index + 1;
+
+			}
+
+			else
+
+			{
+
+				data[count].frame_index = data[count-1].frame_index;
+
+			}
+
+			/**** Time stamps from a computer (by default, it's disabled) ****/
+
+#ifdef DEFAULT_TIMER
+
+			data[count].time = 0.0;
+
+#elif defined MACHINE_TIMER
+
+			data[count].time = data[count-1].time + time_step;
+
+#endif
+
+		}
+
+		else
+
+		{
+
+            data[count].batch_index = 1;
+
+			data[count].frame_index = 1;
+
+			data[count].time = 0;
+
+		}
+
+
+
+        data[count].channel_id = (biotac->frame.frame_structure[i%(biotac->frame.frame_size)] & 0x7E) >> 1;
+
+
+		j = 0;
+
+		data[count].d[j].word = (bt_raw_data[i*byte_shift + j*2 + 2] >> 1) * 32 + (bt_raw_data[i*byte_shift + j*2 + 3] >> 3);
+
+		if((parity_values[bt_raw_data[i*byte_shift + j*2 + 2] >> 1] == bt_raw_data[i*byte_shift + j*2 + 2]) && \
+
+				(parity_values[bt_raw_data[i*byte_shift + j*2 + 3] >> 1] == bt_raw_data[i*byte_shift + j*2 + 3]))
+
+		{
+
+			data[count].bt_parity[j] = PARITY_GOOD;
+
+		}
+
+		else
+
+		{
+
+			data[count].bt_parity[j] = PARITY_BAD;
+
+		}
+
+		
+
+
+
+		//printf("%d, %6.0f, %6.0f,  %s", count , data[count].batch_index, data[count].frame_index, command_name[data[count].channel_id]);
+
+        results[(int)data[count].frame_index-1][ct]=data[count].d[0].word;
+
+        //printf("%6d, ", data[count].d[0].word);
+
+
+        count++;
+
+        if (ct<53) ct+=1;
+
+        else ct=0;
+
+	}
+
+	free(bt_raw_data);
+
+}
+
 //=========================================================================
 // SAVE DATA IN A FILE
 //=========================================================================
